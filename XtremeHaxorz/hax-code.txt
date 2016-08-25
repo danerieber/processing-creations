@@ -1,0 +1,1121 @@
+package org.courseassist.controller;
+
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ResourceBundle;
+import java.util.Set;
+
+import org.courseassist.domain.AssignedCourse;
+import org.courseassist.domain.Course;
+import org.courseassist.domain.Dept;
+import org.courseassist.domain.Student;
+import org.courseassist.domain.StudentWant;
+import org.courseassist.domain.Teacher;
+import org.courseassist.model.TableCourse;
+import org.courseassist.model.TableDept;
+import org.courseassist.model.TableStudent;
+import org.courseassist.model.TableTeacher;
+import org.courseassist.ui.ConfirmWindow;
+import org.courseassist.ui.LoadingWindow;
+import org.courseassist.ui.MessageWindow;
+import org.courseassist.ui.PromptWindow;
+import org.courseassist.ui.StudentAddWindow;
+import org.courseassist.ui.StudentChangeWindow;
+import org.courseassist.ui.StudentEditWindow;
+import org.courseassist.ui.TeacherAddWindow;
+import org.courseassist.ui.TeacherEditWindow;
+import org.courseassist.util.FXMLUtil;
+import org.courseassist.util.FXUtil;
+import org.courseassist.util.FillerUtil;
+import org.courseassist.util.HibernateUtil;
+import org.hibernate.Session;
+
+import javafx.beans.property.ReadOnlyDoubleProperty;
+import javafx.beans.property.ReadOnlyStringProperty;
+import javafx.beans.property.SimpleDoubleProperty;
+import javafx.beans.property.SimpleIntegerProperty;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.concurrent.Task;
+import javafx.event.ActionEvent;
+import javafx.fxml.FXML;
+import javafx.fxml.Initializable;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.ProgressIndicator;
+import javafx.scene.control.TabPane;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
+import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.web.WebView;
+
+public class MainController implements Initializable {
+
+	//		Search
+	@FXML private TextField searchField;
+	@FXML private Button search;
+	
+	//		Back button
+	@FXML private Button back;
+
+	//		Left and right titles
+	@FXML private Label listTitle;
+	@FXML private Label infoTitle;
+
+	//		Left and right panes
+	@FXML private TabPane listPane;
+	@FXML private TabPane infoPane;
+	
+	//		Info labels in info pane
+	@FXML private Label name;
+	@FXML private Label id;
+	@FXML private Label other;
+	
+	//		Scheduler label and progress
+	@FXML private Label schedulerLabel;
+	@FXML private ProgressIndicator schedulerProgress;
+
+	//		Student list
+	@FXML private TableView<TableStudent> students;
+	@FXML private TableColumn<TableStudent, String> studentFirst;
+	@FXML private TableColumn<TableStudent, String> studentLast;
+	@FXML private TableColumn<TableStudent, Integer> studentYear;
+	@FXML private TableColumn<TableStudent, Integer> studentId;
+
+	//		Teacher list
+	@FXML private TableView<TableTeacher> teachers;
+	@FXML private TableColumn<TableTeacher, String> teacherFirst;
+	@FXML private TableColumn<TableTeacher, String> teacherLast;
+	@FXML private TableColumn<TableTeacher, Integer> teacherId;
+
+	//		Course list
+	@FXML private TableView<TableCourse> courses;
+	@FXML private TableColumn<TableCourse, String> courseName;
+	@FXML private TableColumn<TableCourse, String> courseDept;
+	@FXML private TableColumn<TableCourse, Float> courseCredits;
+	@FXML private TableColumn<TableCourse, Integer> courseId;
+
+	//		Dept list
+	@FXML private TableView<TableDept> depts;
+	@FXML private TableColumn<TableDept, String> deptName;
+	@FXML private TableColumn<TableDept, String> deptType;
+	
+	//		Student Info
+	//	Schedule
+	@FXML private TableView<List<Object>> studentSchedule;
+	@FXML private TableColumn<List<Object>, Number> studentSchedulePeriod1;
+	@FXML private TableColumn<List<Object>, String> studentScheduleCourse1;
+	@FXML private TableColumn<List<Object>, String> studentScheduleTeacher1;
+	@FXML private TableColumn<List<Object>, Number> studentSchedulePeriod2;
+	@FXML private TableColumn<List<Object>, String> studentScheduleCourse2;
+	@FXML private TableColumn<List<Object>, String> studentScheduleTeacher2;
+	//	Prefs
+	@FXML private TableView<List<Object>> studentPrefs;
+	@FXML private TableColumn<List<Object>, String> studentPrefsPrimary1;
+	@FXML private TableColumn<List<Object>, String> studentPrefsAlternate1;
+	@FXML private TableColumn<List<Object>, String> studentPrefsPrimary2;
+	@FXML private TableColumn<List<Object>, String> studentPrefsAlternate2;
+	//	Transcript
+	@FXML private WebView studentTranscript;
+	
+	//		Teacher Info
+	//	Schedule
+	@FXML private TableView<List<Object>> teacherSchedule;
+	@FXML private TableColumn<List<Object>, Number> teacherSchedulePeriod1;
+	@FXML private TableColumn<List<Object>, String> teacherScheduleCourse1;
+	@FXML private TableColumn<List<Object>, Number> teacherScheduleStudents1;
+	@FXML private TableColumn<List<Object>, Number> teacherSchedulePeriod2;
+	@FXML private TableColumn<List<Object>, String> teacherScheduleCourse2;
+	@FXML private TableColumn<List<Object>, Number> teacherScheduleStudents2;
+	//	Prefs
+	@FXML private TableView<List<Object>> teacherPrefs;
+	@FXML private TableColumn<List<Object>, String> teacherPrefsCourse;
+	@FXML private TableColumn<List<Object>, String> teacherPrefsDept;
+	//	Transcript
+	@FXML private WebView teacherTranscript;
+	
+	//		Course Info
+	//	Periods
+	@FXML private TableView<List<Object>> coursePeriods;
+	@FXML private TableColumn<List<Object>, Number> coursePeriodsSemester;
+	@FXML private TableColumn<List<Object>, Number> coursePeriodsPeriod;
+	@FXML private TableColumn<List<Object>, String> coursePeriodsTeacher;
+	@FXML private TableColumn<List<Object>, Number> coursePeriodsStudents;
+	//	Teachers
+	@FXML private TableView<List<Object>> courseTeachers;
+	@FXML private TableColumn<List<Object>, String> courseTeachersFirst;
+	@FXML private TableColumn<List<Object>, String> courseTeachersLast;
+	
+	//		Dept Info
+	//	Courses
+	@FXML private TableView<List<Object>> deptCourses;
+	@FXML private TableColumn<List<Object>, String> deptCoursesName;
+	@FXML private TableColumn<List<Object>, Number> deptCoursesCredits;
+	//	Teachers
+	@FXML private TableView<List<Object>> deptTeachers;
+	@FXML private TableColumn<List<Object>, String> deptTeachersFirst;
+	@FXML private TableColumn<List<Object>, String> deptTeachersLast;
+	
+	private int currentStudent, currentTeacher, currentCourse, currentDept;
+
+	//		Table data
+	private static ObservableList<TableStudent> studentList;
+	private static ObservableList<TableTeacher> teacherList;
+	private static ObservableList<TableCourse> courseList;
+	private static ObservableList<TableDept> deptList;
+	
+	private List<Runnable> backActions = new ArrayList<>();
+
+	@Override
+	public void initialize(URL location, ResourceBundle resources) {
+		FXUtil.setColumnWeights(students, new double[]{1.2, 1.2, 0.7, 0.9});
+		FXUtil.setColumnWeights(teachers, new double[]{1.2, 1.2, 0.6});
+		FXUtil.setColumnWeights(courses, new double[]{1.4, 1.1, 0.6, 0.9});
+		FXUtil.setColumnWeights(depts, new double[]{1.5, 0.5});
+		
+		FXUtil.setColumnWeights(studentSchedule, null);
+		FXUtil.setColumnWeights(studentSchedule.getColumns().get(0), new double[]{0.5, 1.5, 1.0});
+		FXUtil.setColumnWeights(studentSchedule.getColumns().get(1), new double[]{0.5, 1.5, 1.0});
+		FXUtil.setColumnWeights(studentPrefs, null);
+		FXUtil.setColumnWeights(studentPrefs.getColumns().get(0), null);
+		FXUtil.setColumnWeights(studentPrefs.getColumns().get(1), null);
+		
+		FXUtil.setColumnWeights(teacherSchedule, null);
+		FXUtil.setColumnWeights(teacherSchedule.getColumns().get(0), new double[]{0.5, 1.8, 0.7});
+		FXUtil.setColumnWeights(teacherSchedule.getColumns().get(1), new double[]{0.5, 1.8, 0.7});
+		FXUtil.setColumnWeights(teacherPrefs, null);
+		FXUtil.setColumnWeights(teacherPrefs.getColumns().get(0), new double[]{1.2, 0.8});
+		FXUtil.setColumnWeights(teacherPrefs.getColumns().get(1), new double[]{1.2, 0.8});
+		
+		FXUtil.setColumnWeights(coursePeriods, new double[]{0.5, 0.5, 2.0, 1.0});
+		FXUtil.setColumnWeights(courseTeachers, null);
+		
+		FXUtil.setColumnWeights(deptCourses, new double[]{1.5, 0.5});
+		FXUtil.setColumnWeights(deptTeachers, null);
+
+		studentFirst.setCellValueFactory(new PropertyValueFactory<>("first"));
+		studentLast.setCellValueFactory(new PropertyValueFactory<>("last"));
+		studentYear.setCellValueFactory(new PropertyValueFactory<>("year"));
+		studentId.setCellValueFactory(new PropertyValueFactory<>("id"));
+
+		teacherFirst.setCellValueFactory(new PropertyValueFactory<>("first"));
+		teacherLast.setCellValueFactory(new PropertyValueFactory<>("last"));
+		teacherId.setCellValueFactory(new PropertyValueFactory<>("id"));
+
+		courseName.setCellValueFactory(new PropertyValueFactory<>("name"));
+		courseDept.setCellValueFactory(new PropertyValueFactory<>("dept"));
+		courseCredits.setCellValueFactory(new PropertyValueFactory<>("credits"));
+		courseId.setCellValueFactory(new PropertyValueFactory<>("id"));
+
+		deptName.setCellValueFactory(new PropertyValueFactory<>("name"));
+		deptType.setCellValueFactory(new PropertyValueFactory<>("type"));
+		
+		studentSchedulePeriod1.setCellValueFactory((value) -> new SimpleIntegerProperty((Integer)value.getValue().get(0)));
+		studentScheduleCourse1.setCellValueFactory((value) -> new SimpleStringProperty((String)value.getValue().get(1)));
+		studentScheduleTeacher1.setCellValueFactory((value) -> new SimpleStringProperty((String)value.getValue().get(2)));
+		studentSchedulePeriod2.setCellValueFactory((value) -> new SimpleIntegerProperty((Integer)value.getValue().get(3)));
+		studentScheduleCourse2.setCellValueFactory((value) -> new SimpleStringProperty((String)value.getValue().get(4)));
+		studentScheduleTeacher2.setCellValueFactory((value) -> new SimpleStringProperty((String)value.getValue().get(5)));
+		
+		studentPrefsPrimary1.setCellValueFactory((value) -> new SimpleStringProperty((String)value.getValue().get(0)));
+		studentPrefsAlternate1.setCellValueFactory((value) -> new SimpleStringProperty((String)value.getValue().get(1)));
+		studentPrefsPrimary2.setCellValueFactory((value) -> new SimpleStringProperty((String)value.getValue().get(2)));
+		studentPrefsAlternate2.setCellValueFactory((value) -> new SimpleStringProperty((String)value.getValue().get(3)));
+		
+		teacherSchedulePeriod1.setCellValueFactory((value) -> new SimpleIntegerProperty((Integer)value.getValue().get(0)));
+		teacherScheduleCourse1.setCellValueFactory((value) -> new SimpleStringProperty((String)value.getValue().get(1)));
+		teacherScheduleStudents1.setCellValueFactory((value) -> new SimpleIntegerProperty((Integer)value.getValue().get(2)));
+		teacherSchedulePeriod2.setCellValueFactory((value) -> new SimpleIntegerProperty((Integer)value.getValue().get(3)));
+		teacherScheduleCourse2.setCellValueFactory((value) -> new SimpleStringProperty((String)value.getValue().get(4)));
+		teacherScheduleStudents2.setCellValueFactory((value) -> new SimpleIntegerProperty((Integer)value.getValue().get(5)));
+		
+		teacherPrefsCourse.setCellValueFactory((value) -> new SimpleStringProperty((String)value.getValue().get(0)));
+		teacherPrefsDept.setCellValueFactory((value) -> new SimpleStringProperty((String)value.getValue().get(1)));
+		
+		coursePeriodsSemester.setCellValueFactory((value) -> new SimpleIntegerProperty((Integer)value.getValue().get(0)));
+		coursePeriodsPeriod.setCellValueFactory((value) -> new SimpleIntegerProperty((Integer)value.getValue().get(1)));
+		coursePeriodsTeacher.setCellValueFactory((value) -> new SimpleStringProperty((String)value.getValue().get(2)));
+		coursePeriodsStudents.setCellValueFactory((value) -> new SimpleIntegerProperty((Integer)value.getValue().get(3)));
+		
+		courseTeachersFirst.setCellValueFactory((value) -> new SimpleStringProperty((String)value.getValue().get(0)));
+		courseTeachersLast.setCellValueFactory((value) -> new SimpleStringProperty((String)value.getValue().get(1)));
+		
+		deptCoursesName.setCellValueFactory((value) -> new SimpleStringProperty((String)value.getValue().get(0)));
+		deptCoursesCredits.setCellValueFactory((value) -> new SimpleDoubleProperty((Double)value.getValue().get(1)));
+		
+		deptTeachersFirst.setCellValueFactory((value) -> new SimpleStringProperty((String)value.getValue().get(0)));
+		deptTeachersLast.setCellValueFactory((value) -> new SimpleStringProperty((String)value.getValue().get(1)));
+
+		students.setItems(studentList);
+		teachers.setItems(teacherList);
+		courses.setItems(courseList);
+		depts.setItems(deptList);
+		
+		FXUtil.addCellDoubleClick((cell) -> {
+			addBackAction(0, currentStudent);
+			setCourseInfoPane((int)cell.getTableView().getItems().get(cell.getIndex()).get(6));
+		}, studentScheduleCourse1);
+		FXUtil.addCellDoubleClick((cell) -> {
+			addBackAction(0, currentStudent);
+			setTeacherInfoPane((int)cell.getTableView().getItems().get(cell.getIndex()).get(7));
+		}, studentScheduleTeacher1);
+		FXUtil.addCellDoubleClick((cell) -> {
+			addBackAction(0, currentStudent);
+			setCourseInfoPane((int)cell.getTableView().getItems().get(cell.getIndex()).get(8));
+		}, studentScheduleCourse2);
+		FXUtil.addCellDoubleClick((cell) -> {
+			addBackAction(0, currentStudent);
+			setTeacherInfoPane((int)cell.getTableView().getItems().get(cell.getIndex()).get(9));
+		}, studentScheduleTeacher2);
+		
+		FXUtil.addCellDoubleClick((cell) -> {
+			addBackAction(0, currentStudent);
+			int id = (int)cell.getTableView().getItems().get(cell.getIndex()).get(4);
+			if (id < 0) return;
+			setCourseInfoPane(id);
+		}, studentPrefsPrimary1);
+		FXUtil.addCellDoubleClick((cell) -> {
+			addBackAction(0, currentStudent);
+			int id = (int)cell.getTableView().getItems().get(cell.getIndex()).get(5);
+			if (id < 0) return;
+			setCourseInfoPane(id);
+		}, studentPrefsAlternate1);
+		FXUtil.addCellDoubleClick((cell) -> {
+			addBackAction(0, currentStudent);
+			int id = (int)cell.getTableView().getItems().get(cell.getIndex()).get(6);
+			if (id < 0) return;
+			setCourseInfoPane(id);
+		}, studentPrefsPrimary2);
+		FXUtil.addCellDoubleClick((cell) -> {
+			addBackAction(0, currentStudent);
+			int id = (int)cell.getTableView().getItems().get(cell.getIndex()).get(7);
+			if (id < 0) return;
+			setCourseInfoPane(id);
+		}, studentPrefsAlternate2);
+		
+		FXUtil.addCellDoubleClick((cell) -> {
+			addBackAction(1, currentTeacher);
+			setCourseInfoPane((int)cell.getTableView().getItems().get(cell.getIndex()).get(6));
+		}, teacherScheduleCourse1);
+		FXUtil.addCellDoubleClick((cell) -> {
+			addBackAction(1, currentTeacher);
+			setCourseInfoPane((int)cell.getTableView().getItems().get(cell.getIndex()).get(7));
+		}, teacherScheduleCourse2);
+		
+		FXUtil.addCellDoubleClick((cell) -> {
+			addBackAction(1, currentTeacher);
+			setCourseInfoPane((int)cell.getTableView().getItems().get(cell.getIndex()).get(2));
+		}, teacherPrefsCourse);
+		FXUtil.addCellDoubleClick((cell) -> {
+			addBackAction(1, currentTeacher);
+			setDeptInfoPane((int)cell.getTableView().getItems().get(cell.getIndex()).get(3));
+		}, teacherPrefsDept);
+		
+		FXUtil.addCellDoubleClick((cell) -> {
+			addBackAction(2, currentCourse);
+			setTeacherInfoPane((int)cell.getTableView().getItems().get(cell.getIndex()).get(4));
+		}, coursePeriodsTeacher);
+		
+		FXUtil.addCellDoubleClick((cell) -> {
+			addBackAction(2, currentCourse);
+			setTeacherInfoPane((int)cell.getTableView().getItems().get(cell.getIndex()).get(2));
+		}, courseTeachersFirst, courseTeachersLast);
+		
+		FXUtil.addCellDoubleClick((cell) -> {
+			addBackAction(2, currentCourse);
+			setCourseInfoPane((int)cell.getTableView().getItems().get(cell.getIndex()).get(2));
+		}, deptCoursesName);
+		FXUtil.addCellDoubleClick((cell) -> {
+			addBackAction(3, currentDept);
+			setCourseInfoPane((int)cell.getTableView().getItems().get(cell.getIndex()).get(2));
+		}, deptCoursesCredits);
+		
+		FXUtil.addCellDoubleClick((cell) -> {
+			addBackAction(3, currentDept);
+			setTeacherInfoPane((int)cell.getTableView().getItems().get(cell.getIndex()).get(2));
+		}, deptTeachersFirst, deptTeachersLast);
+
+		searchField.textProperty().addListener((o, ov, nv) -> search(searchField.getText()));
+
+		listPane.getSelectionModel().selectedIndexProperty().addListener((o, ov, nv) -> {
+			search(searchField.getText());
+			if (nv.equals(0)) {
+				listTitle.setText("Students");
+			}
+			else if (nv.equals(1)) {
+				listTitle.setText("Teachers");
+			}
+			else if (nv.equals(2)) {
+				listTitle.setText("Courses");
+			}
+			else if (nv.equals(3)) {
+				listTitle.setText("Departments");
+			}
+		});
+
+		students.getSelectionModel().selectedItemProperty().addListener((o, ov, student) -> {
+			if (student != null) setStudentInfoPane(student.getId());
+			removeBackActions();
+		});
+
+		teachers.getSelectionModel().selectedItemProperty().addListener((o, ov, teacher) -> {
+			if (teacher != null) setTeacherInfoPane(teacher.getId());
+			removeBackActions();
+		});
+
+		courses.getSelectionModel().selectedItemProperty().addListener((o, ov, course) -> {
+			if (course != null) setCourseInfoPane(course.getId());
+			removeBackActions();
+		});
+
+		depts.getSelectionModel().selectedItemProperty().addListener((o, ov, dept) -> {
+			if (dept != null) setDeptInfoPane(dept.getId());
+			removeBackActions();
+		});
+	}
+
+	public static void setStudentList(List<TableStudent> list) {
+		studentList = FXCollections.observableList(list);
+	}
+	public static void setTeacherList(List<TableTeacher> list) {
+		teacherList = FXCollections.observableList(list);
+	}
+	public static void setCourseList(List<TableCourse> list) {
+		courseList = FXCollections.observableList(list);
+	}
+	public static void setDeptList(List<TableDept> list) {
+		deptList = FXCollections.observableList(list);
+	}
+	
+	public static ObservableList<TableCourse> getCourseList() {
+		return courseList;
+	}
+	
+	public void bindSchedulerProgress(ReadOnlyStringProperty message, ReadOnlyDoubleProperty progress) {
+		schedulerLabel.textProperty().bind(message);
+		schedulerProgress.progressProperty().bind(progress);
+	}
+	
+	public void setScheudlerProgressVisible(boolean isVisible) {
+		schedulerLabel.setVisible(isVisible);
+		schedulerProgress.setVisible(isVisible);
+	}
+	
+	private void setInfoTab(int tab) {
+		infoPane.getSelectionModel().select(tab);
+		if (tab == 0) infoTitle.setText("Student Info");
+		else if (tab == 1) infoTitle.setText("Teacher Info");
+		else if (tab == 2) infoTitle.setText("Course Info");
+		else if (tab == 3) infoTitle.setText("Department Info");
+	}
+	
+	private void addBackAction(int type, int id) {
+		if (backActions.isEmpty()) back.setDisable(false);
+		if (type == 0) {
+			backActions.add(() -> setStudentInfoPane(id));
+		} else if (type == 1) {
+			backActions.add(() -> setTeacherInfoPane(id));
+		} else if (type == 2) {
+			backActions.add(() -> setCourseInfoPane(id));
+		} else if (type == 3) {
+			backActions.add(() -> setDeptInfoPane(id));
+		}
+	}
+	
+	private void removeBackActions() {
+		backActions.clear();
+		back.setDisable(true);
+	}
+	
+	private void goBack() {
+		if (!backActions.isEmpty()) {
+			int i = backActions.size() - 1;
+			backActions.get(i).run();
+			backActions.remove(i);
+		}
+		if (backActions.isEmpty()) back.setDisable(true);
+	}
+	
+	private void setStudentInfoPane(int studentId) {
+		if (studentId < 0) return;
+		
+		currentStudent = studentId;
+		
+		setInfoTab(0);
+		
+		HibernateUtil.getSession().beginTransaction();
+		Student student = Student.findById(studentId);
+		if (student == null) {
+			new MessageWindow("The student with id '" + studentId + "' does not exist");
+			return;
+		}
+		Set<AssignedCourse> schedule = student.getStudentSchedule();
+		for (AssignedCourse ac : schedule) {
+			ac.getCourse().getName();
+			ac.getTeacher().getFirstName();
+			ac.getTeacher().getLastName();
+		}
+		
+		Set<StudentWant> prefs = student.getStudentWants();
+		for (StudentWant sw : prefs) {
+			sw.getCourse().getName();
+			sw.getCourse().getCourseID();
+			if (sw.getAlternateCourse() != null) {
+				sw.getAlternateCourse().getName();
+				sw.getAlternateCourse().getCourseID();
+			}
+		}
+		HibernateUtil.getSession().getTransaction().commit();
+		
+		name.setText(student.getFirstName() + " " + student.getMiddleInitial() + ". " + student.getLastName());
+		id.setText("ID: " + student.getStudent_id());
+		other.setText("Grad. year: " + student.getGradYear());
+		
+		ObservableList<List<Object>> scheduleData = FXCollections.observableArrayList();
+		
+		List<List<Object>> schedule1 = new ArrayList<>();
+		List<List<Object>> schedule2 = new ArrayList<>();
+		List<List<Object>> scheduleIds1 = new ArrayList<>();
+		List<List<Object>> scheduleIds2 = new ArrayList<>();
+		
+		for (AssignedCourse ac : schedule) {
+			if (ac.getSemester().equals(1)) { 
+				schedule1.add(Arrays.asList(ac.getPeriod(), ac.getCourse().getName(), ac.getTeacher().getFirstName() + " " + ac.getTeacher().getLastName()));
+				scheduleIds1.add(Arrays.asList(ac.getCourse().getCourseID(), ac.getTeacher().getTeacher_id()));
+			} else {
+				schedule2.add(Arrays.asList(ac.getPeriod(), ac.getCourse().getName(), ac.getTeacher().getFirstName() + " " + ac.getTeacher().getLastName()));
+				scheduleIds2.add(Arrays.asList(ac.getCourse().getCourseID(), ac.getTeacher().getTeacher_id()));
+			}
+		}
+		
+		List<List<Object>> temp1 = new ArrayList<>();
+		List<List<Object>> temp2 = new ArrayList<>();
+		List<List<Object>> tempIds1 = new ArrayList<>();
+		List<List<Object>> tempIds2 = new ArrayList<>();
+		
+		for (int i = 0; i < 8; i++) {
+			boolean found = false;
+			for (List<Object> list : schedule1) {
+				if (list.get(0).equals(i)) {
+					temp1.add(list);
+					tempIds1.add(scheduleIds1.get(schedule1.indexOf(list)));
+					found = true;
+					break;
+				}
+			}
+			if (!found) {
+				temp1.add(Arrays.asList(i, "--", "--"));
+				tempIds1.add(Arrays.asList(-1, -1));
+			}
+			found = false;
+			for (List<Object> list : schedule2) {
+				if (list.get(0).equals(i)) {
+					temp2.add(list);
+					tempIds2.add(scheduleIds2.get(schedule2.indexOf(list)));
+					found = true;
+					break;
+				}
+			}
+			if (!found) {
+				temp2.add(Arrays.asList(i, "--", "--"));
+				tempIds2.add(Arrays.asList(-1, -1));
+			}
+		}
+		
+		schedule1 = temp1;
+		schedule2 = temp2;
+		scheduleIds1 = tempIds1;
+		scheduleIds2 = tempIds2;
+		
+		while (schedule1.size() > schedule2.size()) {
+			schedule2.add(Arrays.asList(0, "--", "--"));
+			scheduleIds2.add(Arrays.asList(-1, -1));
+		}
+		while (schedule2.size() > schedule1.size()) {
+			schedule1.add(Arrays.asList(0, "--", "--"));
+			scheduleIds1.add(Arrays.asList(-1, -1));
+		}
+		
+		for (int i = 0; i < schedule1.size(); i++) {
+			List<Object> row = new ArrayList<>();
+			
+			row.addAll(schedule1.get(i));
+			row.addAll(schedule2.get(i));
+			row.addAll(scheduleIds1.get(i));
+			row.addAll(scheduleIds2.get(i));
+			
+			scheduleData.add(row);
+		}
+		
+		studentSchedule.setItems(scheduleData);
+		
+		ObservableList<List<Object>> prefData = FXCollections.observableArrayList();
+		
+		List<List<Object>> pref1 = new ArrayList<>();
+		List<List<Object>> pref2 = new ArrayList<>();
+		List<List<Object>> prefIds1 = new ArrayList<>();
+		List<List<Object>> prefIds2 = new ArrayList<>();
+		
+		Iterator<StudentWant> prefIter = prefs.iterator();
+		while (prefIter.hasNext()) {
+			StudentWant sw = prefIter.next();
+			if (sw.getCourse().getCredit().equals(1.0)) {
+				Course course = sw.getCourse();
+				Course alt = sw.getAlternateCourse();
+				
+				List<Object> list = Arrays.asList(course.getName(), (alt != null ? alt.getName() : "--"));
+				List<Object> ids = Arrays.asList(course.getCourseID(), (alt != null ? alt.getCourseID() : -1));
+				
+				pref1.add(list);
+				prefIds1.add(ids);
+				
+				pref2.add(list);
+				prefIds2.add(ids);
+				
+				prefIter.remove();
+			}
+		}
+		for (StudentWant sw: prefs) {
+			if (sw.getSemester().equals(1)) {
+				Course course = sw.getCourse();
+				Course alt = sw.getAlternateCourse();
+				
+				pref1.add(Arrays.asList(course.getName(), (alt != null ? alt.getName() : "--")));
+				prefIds1.add(Arrays.asList(course.getCourseID(), (alt != null ? alt.getCourseID() : -1)));
+			} else {
+				Course course = sw.getCourse();
+				Course alt = sw.getAlternateCourse();
+				
+				pref2.add(Arrays.asList(course.getName(), (alt != null ? alt.getName() : "--")));
+				prefIds2.add(Arrays.asList(course.getCourseID(), (alt != null ? alt.getCourseID() : -1)));
+			}
+		}
+		
+		while (pref1.size() > pref2.size()) {
+			pref2.add(Arrays.asList("--", "--"));
+			prefIds2.add(Arrays.asList(-1, -1));
+		}
+		while (pref2.size() > pref1.size()) {
+			pref1.add(Arrays.asList("--", "--"));
+			prefIds1.add(Arrays.asList(-1, -1));
+		}
+		
+		for (int i = 0; i < pref1.size(); i++) {
+			List<Object> row = new ArrayList<>();
+			
+			row.addAll(pref1.get(i));
+			row.addAll(pref2.get(i));
+			row.addAll(prefIds1.get(i));
+			row.addAll(prefIds2.get(i));
+			
+			prefData.add(row);
+		}
+		
+		studentPrefs.setItems(prefData);
+	}
+	
+	private void setTeacherInfoPane(int teacherId) {
+		if (teacherId < 0) return;
+		
+		currentTeacher = teacherId;
+		
+		setInfoTab(1);
+
+		HibernateUtil.getSession().beginTransaction();
+		Teacher teacher = Teacher.findById(teacherId);
+		if (teacher == null) {
+			new MessageWindow("The teacher with id '" + teacherId + "' does not exist");
+			return;
+		}
+		
+		Set<AssignedCourse> schedule = teacher.getTeacherSchedule();
+		for (AssignedCourse ac : schedule) {
+			ac.getCourse().getName();
+			ac.getStudents().size();
+		}
+		
+		Set<Course> prefs = teacher.getWantsCourses();
+		for (Course c : prefs) c.getDept().getName();
+		HibernateUtil.getSession().getTransaction().commit();
+		
+		name.setText(teacher.getFirstName() + " " + teacher.getMiddleInitial() + ". " + teacher.getLastName());
+		id.setText("ID: " + teacher.getTeacher_id());
+		other.setText("");
+		
+		ObservableList<List<Object>> scheduleData = FXCollections.observableArrayList();
+		
+		List<List<Object>> schedule1 = new ArrayList<>();
+		List<List<Object>> schedule2 = new ArrayList<>();
+		List<List<Object>> scheduleIds1 = new ArrayList<>();
+		List<List<Object>> scheduleIds2 = new ArrayList<>();
+		
+		for (AssignedCourse ac : schedule) {
+			if (ac.getSemester().equals(1)) { 
+				schedule1.add(Arrays.asList(ac.getPeriod(), ac.getCourse().getName(), ac.getStudents().size()));
+				scheduleIds1.add(Arrays.asList(ac.getCourse().getCourseID()));
+			} else {
+				schedule2.add(Arrays.asList(ac.getPeriod(), ac.getCourse().getName(), ac.getStudents().size()));
+				scheduleIds2.add(Arrays.asList(ac.getCourse().getCourseID()));
+			}
+		}
+		
+		List<List<Object>> temp1 = new ArrayList<>();
+		List<List<Object>> temp2 = new ArrayList<>();
+		List<List<Object>> tempIds1 = new ArrayList<>();
+		List<List<Object>> tempIds2 = new ArrayList<>();
+		
+		for (int i = 0; i < 8; i++) {
+			boolean found = false;
+			for (List<Object> list : schedule1) {
+				if (list.get(0).equals(i)) {
+					temp1.add(list);
+					tempIds1.add(scheduleIds1.get(schedule1.indexOf(list)));
+					found = true;
+					break;
+				}
+			}
+			if (!found) {
+				temp1.add(Arrays.asList(i, "--", 0));
+				tempIds1.add(Arrays.asList(-1));
+			}
+			found = false;
+			for (List<Object> list : schedule2) {
+				if (list.get(0).equals(i)) {
+					temp2.add(list);
+					tempIds2.add(scheduleIds2.get(schedule2.indexOf(list)));
+					found = true;
+					break;
+				}
+			}
+			if (!found) {
+				temp2.add(Arrays.asList(i, "--", 0));
+				tempIds2.add(Arrays.asList(-1));
+			}
+		}
+		
+		schedule1 = temp1;
+		schedule2 = temp2;
+		scheduleIds1 = tempIds1;
+		scheduleIds2 = tempIds2;
+		
+		while (schedule1.size() > schedule2.size()) {
+			schedule2.add(Arrays.asList(0, "--", 0));
+			scheduleIds2.add(Arrays.asList(-1));
+		}
+		while (schedule2.size() > schedule1.size()) {
+			schedule1.add(Arrays.asList(0, "--", 0));
+			scheduleIds1.add(Arrays.asList(-1));
+		}
+		
+		for (int i = 0; i < schedule1.size(); i++) {
+			List<Object> row = new ArrayList<>();
+			
+			row.addAll(schedule1.get(i));
+			row.addAll(schedule2.get(i));
+			row.addAll(scheduleIds1.get(i));
+			row.addAll(scheduleIds2.get(i));
+			
+			scheduleData.add(row);
+		}
+		
+		teacherSchedule.setItems(scheduleData);
+		
+		ObservableList<List<Object>> prefData = FXCollections.observableArrayList();
+		
+		for (Course c : prefs) {
+			prefData.add(Arrays.asList(c.getName(), c.getDept().getName(), c.getCourseID(), c.getDept().getDept_id()));
+		}
+		
+		teacherPrefs.setItems(prefData);
+	}
+	
+	private void setCourseInfoPane(int courseId) {
+		if (courseId < 0) return;
+		
+		currentCourse = courseId;
+		
+		setInfoTab(2);
+		
+		HibernateUtil.getSession().beginTransaction();
+		Course course = Course.findById(courseId);
+		if (course == null) {
+			new MessageWindow("The course with id '" + courseId + "' does not exist");
+			return;
+		}
+		
+		course.getDept().getName();
+		
+		Set<AssignedCourse> periods = course.getCoursesOfThisCourse(1);
+		periods.addAll(course.getCoursesOfThisCourse(2)); //TODO courses showing up on both sem 1 and 2 
+		for (AssignedCourse ac : periods) {
+			ac.getTeacher().getFirstName();
+			ac.getTeacher().getLastName();
+			ac.getTeacher().getTeacher_id();
+			ac.getStudents().size();
+		}
+		
+		Set<Teacher> teachers = course.getEligibleTeachers();
+		for (Teacher t : teachers) t.getTeacher_id();
+		HibernateUtil.getSession().getTransaction().commit();
+		
+		name.setText(course.getName());
+		id.setText(course.getDept().getName());
+		other.setText("Credits: " + course.getCredit());
+		
+		ObservableList<List<Object>> periodData = FXCollections.observableArrayList();
+		
+		for (AssignedCourse ac : periods) {
+			periodData.add(Arrays.asList(
+					ac.getSemester(),
+					ac.getPeriod(),
+					ac.getTeacher().getFirstName() + " " + ac.getTeacher().getLastName(),
+					ac.getStudents().size(),
+					ac.getTeacher().getTeacher_id()
+					));
+		}
+		
+		coursePeriods.setItems(periodData);
+		
+		ObservableList<List<Object>> teacherData = FXCollections.observableArrayList();
+		
+		for (Teacher t : teachers) {
+			teacherData.add(Arrays.asList(t.getFirstName(), t.getLastName(), t.getTeacher_id()));
+		}
+		
+		courseTeachers.setItems(teacherData);
+	}
+	
+	private void setDeptInfoPane(int deptId) {
+		if (deptId < 0) return;
+
+		currentDept = deptId;
+		
+		setInfoTab(3);
+		
+		HibernateUtil.getSession().beginTransaction();
+		Dept dept = Dept.findById(deptId);
+		if (dept == null) {
+			new MessageWindow("The dept with id '" + deptId + "' does not exist");
+			return;
+		}
+		
+		Set<Course> courses = dept.getCourses();
+		Set<Teacher> teachers = new HashSet<>();
+		for (Course c : courses) {
+			c.getCourseID();
+			c.getName();
+			c.getCredit();
+			for (Teacher t : c.getEligibleTeachers()) {
+				if (!teachers.contains(t)) {
+					t.getFirstName();
+					t.getLastName();
+					t.getTeacher_id();
+					teachers.add(t);
+				}
+			}
+		}
+		HibernateUtil.getSession().getTransaction().commit();
+		
+		name.setText(dept.getName());
+		id.setText("ID: " + dept.getDept_id());
+		other.setText("Type: " + (dept.getType().equals("CORE") ? "Core" : "Elective"));
+		
+		ObservableList<List<Object>> courseData = FXCollections.observableArrayList();
+		
+		for (Course c : courses) {
+			courseData.add(Arrays.asList(c.getName(), c.getCredit(), c.getCourseID()));
+		}
+		
+		deptCourses.setItems(courseData);
+		
+		ObservableList<List<Object>> teacherData = FXCollections.observableArrayList();
+		
+		for (Teacher t : teachers) {
+			teacherData.add(Arrays.asList(t.getFirstName(), t.getLastName(), t.getTeacher_id()));
+		}
+		
+		deptTeachers.setItems(teacherData);
+	}
+
+	private void search(String searchText) {
+		String[] search = searchText.toLowerCase().split(" ");
+
+		int tabIndex = listPane.getSelectionModel().getSelectedIndex();
+
+		if (tabIndex == 0) {
+			ObservableList<TableStudent> results = FXCollections.observableArrayList();
+
+			for (String text : search) {
+				if (text.isEmpty()) {
+					students.setItems(studentList);
+					return;
+				}
+
+				for (TableStudent student : studentList) {
+					if (
+							student.getFirst().toLowerCase().contains(text) ||
+							student.getLast().toLowerCase().contains(text) ||
+							String.valueOf(student.getYear()).equals(text) ||
+							String.valueOf(student.getId()).contains(text)
+							) {
+						results.add(student);
+					} else {
+						results.remove(student);
+					}
+				}
+			}
+
+			students.setItems(results);
+		}
+		else if (tabIndex == 1) {
+			ObservableList<TableTeacher> results = FXCollections.observableArrayList();
+
+			for (String text : search) {
+				if (text.isEmpty()) {
+					teachers.setItems(teacherList);
+					return;
+				}
+
+				for (TableTeacher teacher : teacherList) {
+					if (
+							teacher.getFirst().toLowerCase().contains(text) ||
+							teacher.getLast().toLowerCase().contains(text) ||
+							String.valueOf(teacher.getId()).contains(text)
+							) {
+						results.add(teacher);
+					} else {
+						results.remove(teacher);
+					}
+				}
+			}
+
+			teachers.setItems(results);
+		}
+		else if (tabIndex == 2) {
+			ObservableList<TableCourse> results = FXCollections.observableArrayList();
+
+			for (String text : search) {
+				if (text.isEmpty()) {
+					courses.setItems(courseList);
+					return;
+				}
+
+				for (TableCourse course : courseList) {
+					if (
+							course.getName().toLowerCase().contains(text) ||
+							course.getDept().toLowerCase().contains(text) ||
+							String.valueOf(course.getCredits()).equals(text) ||
+							String.valueOf(course.getId()).contains(text)
+							) {
+						results.add(course);
+					} else {
+						results.remove(course);
+					}
+				}
+			}
+
+			courses.setItems(results);
+		}
+		else if (tabIndex == 3) {
+			ObservableList<TableDept> results = FXCollections.observableArrayList();
+
+			for (String text : search) {
+				if (text.isEmpty()) {
+					depts.setItems(deptList);
+					return;
+				}
+
+				for (TableDept dept : deptList) {
+					if (
+							dept.getName().toLowerCase().contains(text) ||
+							dept.getType().toLowerCase().contains(text)
+							) {
+						results.add(dept);
+					} else {
+						results.remove(dept);
+					}
+				}
+			}
+
+			depts.setItems(results);
+		}
+	}
+
+	private void generateStudents(int amount) {		
+		new LoadingWindow(new Task<Void>() {
+			@Override
+			protected Void call() throws Exception {
+				updateMessage("Generating " + amount + " students...");
+				updateProgress(1, 3);
+				
+				FillerUtil.fillStudentTable(amount);
+				
+				updateMessage("Generating student preferences...");
+				updateProgress(2, 3);
+				
+				FillerUtil.fillStudentWantsTable();
+				
+				setStudentList(TableStudent.convert(Student.findAll()));
+				students.setItems(studentList);
+				return null;
+			}
+		}, () -> {}, false);
+	}
+
+	private void generateTeachers() {
+		FillerUtil.fillTeacherTable();
+		setTeacherList(TableTeacher.convert(Teacher.findAll()));
+		teachers.setItems(teacherList);
+	}
+
+	@FXML private void handleGenerateStudents(ActionEvent e) {
+		String s = new PromptWindow("How many students would you like to generate?").show();
+		if (s == null) return;
+
+		Integer amt = FXUtil.numValueOf(s);
+		if (amt == null || amt <= 0) return;
+
+		generateStudents(amt);
+	}
+
+	@FXML private void handleGenerateTeachers(ActionEvent e) {
+		generateTeachers();
+	}
+
+	@FXML private void handleNew(ActionEvent e) {
+		int tabIndex = listPane.getSelectionModel().getSelectedIndex();
+
+		if (tabIndex == 0) {
+			TableStudent ts = new StudentAddWindow().show();
+			studentList.add(ts);
+			students.getSelectionModel().select(ts);
+			students.scrollTo(ts);
+		} else if (tabIndex == 1) {
+			TableTeacher tt = new TeacherAddWindow().show();
+			teacherList.add(tt);
+			teachers.getSelectionModel().select(tt);
+			teachers.scrollTo(tt);
+		}
+	}
+
+	@FXML private void handleDelete(ActionEvent e) {
+		int tabIndex = listPane.getSelectionModel().getSelectedIndex();
+
+		if (tabIndex == 0) {
+			TableStudent ts = students.getSelectionModel().getSelectedItem();
+
+			if (ts == null) return;
+
+			boolean confirm = new ConfirmWindow("Are you sure you want to delete student '" + ts.getFirst() + " " + ts.getLast() + "'?").show();
+
+			if (confirm) {
+				Session sess = HibernateUtil.getSession();
+				sess.beginTransaction();
+				Student s = Student.findById(ts.getId());
+				sess.remove(s);
+				sess.getTransaction().commit();
+
+				studentList.remove(ts);
+			}
+		} else if (tabIndex == 1) {
+			TableTeacher tt = teachers.getSelectionModel().getSelectedItem();
+
+			if (tt == null) return;
+
+			boolean confirm = new ConfirmWindow("Are you sure you want to delete teacher '" + tt.getFirst() + " " + tt.getLast() + "'?").show();
+
+			if (confirm) {
+				Session sess = HibernateUtil.getSession();
+				sess.beginTransaction();
+				Teacher t = Teacher.findById(tt.getId());
+				sess.remove(t);
+				sess.getTransaction().commit();
+
+				teacherList.remove(tt);
+			}
+		} else if (tabIndex == 2) {
+			TableCourse tc = courses.getSelectionModel().getSelectedItem();
+
+			if (tc == null) return;
+
+			boolean confirm = new ConfirmWindow("Are you sure you want to delete course '" + tc.getName() + "'?").show();
+
+			if (confirm) {
+				Session sess = HibernateUtil.getSession();
+				sess.beginTransaction();
+				Course c = Course.findById(tc.getId());
+				sess.remove(c);
+				sess.getTransaction().commit();
+
+				courseList.remove(tc);
+			}
+		} else if (tabIndex == 3) {
+			TableDept td = depts.getSelectionModel().getSelectedItem();
+
+			if (td == null) return;
+
+			boolean confirm = new ConfirmWindow("Are you sure you want to delete department '" + td.getName() + "'?").show();
+
+			if (confirm) {
+				Session sess = HibernateUtil.getSession();
+				sess.beginTransaction();
+				Dept d = Dept.findById(td.getId());
+				sess.remove(d);
+				sess.getTransaction().commit();
+
+				deptList.remove(td);
+			}
+		}
+		
+		search(searchField.getText());
+	}
+	
+	@FXML private void handleBack(ActionEvent e) {
+		goBack();
+	}
+	
+	@FXML private void handleEdit(ActionEvent e) {
+		int tabIndex = listPane.getSelectionModel().getSelectedIndex();
+		
+		if (tabIndex == 0) {
+			TableStudent selection = students.getSelectionModel().getSelectedItem();
+			if (selection != null) {
+				TableStudent student = new StudentEditWindow(selection.getId()).show();
+				if (student != null) {
+					studentList.set(studentList.indexOf(selection), student);
+					setStudentInfoPane(student.getId());
+				}
+			}
+		} else if (tabIndex == 1) {
+			TableTeacher selection = teachers.getSelectionModel().getSelectedItem();
+			if (selection != null) {
+				TableTeacher teacher = new TeacherEditWindow(selection.getId()).show();
+				if (teacher != null) {
+					teacherList.set(teacherList.indexOf(selection), teacher);
+					setTeacherInfoPane(teacher.getId());
+				}
+			}
+		}
+		
+		search(searchField.getText());
+	}
+	
+	@FXML private void handleOpenScheduler(ActionEvent e) {
+		SchedulerController.setMainController(this);
+		FXMLUtil.open(FXMLUtil.SCHEDULER, "CourseAssist Scheduler", true);
+	}
+	
+	@FXML private void handleChange(ActionEvent e) {
+		if (listPane.getSelectionModel().getSelectedIndex() == 0) {
+			StudentChangeWindow.setVars(true, students.getSelectionModel().getSelectedItem().getId());
+			FXMLUtil.open(FXMLUtil.CHANGE, "Change Preferences", true);
+		}
+	}
+
+}
